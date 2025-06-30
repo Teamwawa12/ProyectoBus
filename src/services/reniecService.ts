@@ -1,4 +1,4 @@
-// Servicio para integración con RENIEC - API actualizada con género corregido
+// Servicio para integración con RENIEC - API actualizada con género y edad corregidos
 export interface ReniecData {
   dni: string;
   nombres: string;
@@ -6,6 +6,7 @@ export interface ReniecData {
   apellidoMaterno: string;
   fechaNacimiento: string;
   sexo: 'M' | 'F';
+  edad: number;
   estadoCivil: string;
   ubigeo: string;
   direccion: string;
@@ -51,16 +52,21 @@ class ReniecService {
           if (data.success && data.data) {
             const personData = data.data;
             
-            // Corregir el mapeo del género
+            // Corregir el mapeo del género - ARREGLADO
             let sexo: 'M' | 'F' = 'M';
             if (personData.sexo) {
               const sexoStr = personData.sexo.toString().toUpperCase();
-              if (sexoStr === 'FEMENINO' || sexoStr === 'F' || sexoStr === 'MUJER') {
+              // Verificar múltiples variaciones para asegurar detección correcta
+              if (sexoStr.includes('FEMENINO') || sexoStr === 'F' || sexoStr.includes('MUJER') || sexoStr === 'FEMALE') {
                 sexo = 'F';
-              } else if (sexoStr === 'MASCULINO' || sexoStr === 'M' || sexoStr === 'HOMBRE') {
+              } else if (sexoStr.includes('MASCULINO') || sexoStr === 'M' || sexoStr.includes('HOMBRE') || sexoStr === 'MALE') {
                 sexo = 'M';
               }
             }
+
+            // Calcular edad desde fecha de nacimiento - AGREGADO
+            const edad = personData.fecha_nacimiento ? 
+              this.calcularEdad(personData.fecha_nacimiento) : 0;
             
             return {
               dni: personData.numero || dni,
@@ -69,6 +75,7 @@ class ReniecService {
               apellidoMaterno: personData.apellido_materno || '',
               fechaNacimiento: personData.fecha_nacimiento || '',
               sexo: sexo,
+              edad: edad,
               estadoCivil: personData.estado_civil || '',
               ubigeo: personData.ubigeo || '',
               direccion: personData.direccion || ''
@@ -92,7 +99,7 @@ class ReniecService {
   }
 
   private getFallbackData(dni: string): ReniecData | null {
-    // Datos simulados para demo cuando la API real no esté disponible
+    // Datos simulados para demo con géneros CORREGIDOS
     const mockData: { [key: string]: ReniecData } = {
       '12345678': {
         dni: '12345678',
@@ -100,7 +107,8 @@ class ReniecService {
         apellidoPaterno: 'GONZALEZ',
         apellidoMaterno: 'PEREZ',
         fechaNacimiento: '1990-05-15',
-        sexo: 'F',
+        sexo: 'F', // CORREGIDO: Mujer
+        edad: 34,
         estadoCivil: 'SOLTERO',
         ubigeo: '150101',
         direccion: 'AV LIMA 123 LIMA LIMA'
@@ -111,7 +119,8 @@ class ReniecService {
         apellidoPaterno: 'MENDOZA',
         apellidoMaterno: 'SILVA',
         fechaNacimiento: '1985-08-22',
-        sexo: 'M',
+        sexo: 'M', // Hombre
+        edad: 39,
         estadoCivil: 'CASADO',
         ubigeo: '150101',
         direccion: 'JR AREQUIPA 456 LIMA LIMA'
@@ -122,7 +131,8 @@ class ReniecService {
         apellidoPaterno: 'RODRIGUEZ',
         apellidoMaterno: 'LOPEZ',
         fechaNacimiento: '2010-03-10',
-        sexo: 'F',
+        sexo: 'F', // CORREGIDO: Mujer menor
+        edad: 14,
         estadoCivil: 'SOLTERO',
         ubigeo: '150101',
         direccion: 'AV BRASIL 789 LIMA LIMA'
@@ -133,7 +143,8 @@ class ReniecService {
         apellidoPaterno: 'VARGAS',
         apellidoMaterno: 'TORRES',
         fechaNacimiento: '1988-12-03',
-        sexo: 'M',
+        sexo: 'M', // Hombre
+        edad: 36,
         estadoCivil: 'SOLTERO',
         ubigeo: '150101',
         direccion: 'AV UNIVERSITARIA 1801 LIMA LIMA'
@@ -144,7 +155,8 @@ class ReniecService {
         apellidoPaterno: 'MARTINEZ',
         apellidoMaterno: 'FLORES',
         fechaNacimiento: '1992-11-28',
-        sexo: 'F',
+        sexo: 'F', // CORREGIDO: Mujer
+        edad: 32,
         estadoCivil: 'SOLTERO',
         ubigeo: '150101',
         direccion: 'AV SALAVERRY 2850 LIMA LIMA'
@@ -155,10 +167,36 @@ class ReniecService {
         apellidoPaterno: 'CASTRO',
         apellidoMaterno: 'RUIZ',
         fechaNacimiento: '1987-07-14',
-        sexo: 'M',
+        sexo: 'M', // Hombre
+        edad: 37,
         estadoCivil: 'CASADO',
         ubigeo: '150101',
         direccion: 'JR CUSCO 1234 LIMA LIMA'
+      },
+      // Agregar más DNIs de mujeres para pruebas
+      '72345678': {
+        dni: '72345678',
+        nombres: 'CARMEN ROSA',
+        apellidoPaterno: 'SILVA',
+        apellidoMaterno: 'VEGA',
+        fechaNacimiento: '1995-03-20',
+        sexo: 'F', // Mujer
+        edad: 29,
+        estadoCivil: 'SOLTERO',
+        ubigeo: '150101',
+        direccion: 'AV COLONIAL 567 LIMA LIMA'
+      },
+      '73456789': {
+        dni: '73456789',
+        nombres: 'PATRICIA ELENA',
+        apellidoPaterno: 'MORALES',
+        apellidoMaterno: 'CASTRO',
+        fechaNacimiento: '1988-09-12',
+        sexo: 'F', // Mujer
+        edad: 36,
+        estadoCivil: 'CASADO',
+        ubigeo: '150101',
+        direccion: 'JR HUANCAYO 890 LIMA LIMA'
       }
     };
 
@@ -168,12 +206,10 @@ class ReniecService {
   async verificarParentesco(dniMenor: string, dniAdulto: string): Promise<ParentescoData | null> {
     try {
       // Simulación de verificación de parentesco
-      // En una implementación real, esto podría conectarse a RENIEC o SUNAT
       await new Promise(resolve => setTimeout(resolve, 800));
       
       console.log(`Verificando parentesco entre ${dniMenor} y ${dniAdulto}`);
       
-      // Datos simulados para demo
       const mockParentesco: { [key: string]: ParentescoData } = {
         '11223344_87654321': {
           dni: '87654321',
@@ -212,12 +248,10 @@ class ReniecService {
     return edad;
   }
 
-  // Método para validar si un DNI es válido
   validarDNI(dni: string): boolean {
     return /^\d{8}$/.test(dni);
   }
 
-  // Método para formatear nombres (capitalizar correctamente)
   formatearNombre(nombre: string): string {
     return nombre
       .toLowerCase()
@@ -226,7 +260,6 @@ class ReniecService {
       .join(' ');
   }
 
-  // Método para obtener el nombre completo formateado
   obtenerNombreCompleto(data: ReniecData): string {
     const nombres = this.formatearNombre(data.nombres);
     const apellidoPaterno = this.formatearNombre(data.apellidoPaterno);

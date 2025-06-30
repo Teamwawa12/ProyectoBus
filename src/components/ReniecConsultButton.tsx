@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, CheckCircle, AlertCircle, Loader, Database } from 'lucide-react';
+import { Search, CheckCircle, AlertCircle, Loader, Database, User, Calendar } from 'lucide-react';
 import { reniecService, ReniecData } from '../services/reniecService';
 
 interface ReniecConsultButtonProps {
@@ -18,6 +18,7 @@ export function ReniecConsultButton({
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
+  const [lastResult, setLastResult] = useState<ReniecData | null>(null);
 
   const handleConsult = async () => {
     if (!dni || dni.length !== 8) {
@@ -35,7 +36,8 @@ export function ReniecConsultButton({
       
       if (data) {
         setStatus('success');
-        setMessage('Datos obtenidos correctamente');
+        setMessage(`Datos obtenidos: ${data.nombres} ${data.apellidoPaterno} - ${data.sexo === 'F' ? 'Mujer' : 'Hombre'}, ${data.edad} años`);
+        setLastResult(data);
         onDataReceived(data);
       } else {
         setStatus('error');
@@ -48,11 +50,11 @@ export function ReniecConsultButton({
     } finally {
       setLoading(false);
       
-      // Limpiar mensaje después de 3 segundos
+      // Limpiar mensaje después de 5 segundos
       setTimeout(() => {
         setStatus('idle');
         setMessage('');
-      }, 3000);
+      }, 5000);
     }
   };
 
@@ -88,7 +90,7 @@ export function ReniecConsultButton({
         <span>
           {loading ? 'Consultando...' : 
            status === 'success' ? 'Consultado' :
-           status === 'error' ? 'Error' : 'Buscar'}
+           status === 'error' ? 'Error' : 'Buscar RENIEC'}
         </span>
       </button>
       
@@ -100,6 +102,24 @@ export function ReniecConsultButton({
             'text-blue-700 bg-blue-100 dark:text-blue-300 dark:bg-blue-900/30'}
         `}>
           {message}
+        </div>
+      )}
+
+      {/* Mostrar información adicional cuando hay datos */}
+      {lastResult && status === 'success' && (
+        <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div className="flex items-center space-x-2 text-sm">
+            <User className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <span className="font-medium text-green-800 dark:text-green-200">
+              {lastResult.sexo === 'F' ? '👩 Mujer' : '👨 Hombre'}
+            </span>
+          </div>
+          <div className="flex items-center space-x-2 text-sm mt-1">
+            <Calendar className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <span className="text-green-700 dark:text-green-300">
+              {lastResult.edad} años
+            </span>
+          </div>
         </div>
       )}
     </div>
